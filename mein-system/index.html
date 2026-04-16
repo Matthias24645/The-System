@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System</title>
+
+  <style>
+    :root {
+      --cyan: #00d9ff;
+      --bg1: #000000;
+      --bg2: #001624;
+      --panel: rgba(0, 0, 0, 0.88);
+      --panel-border: rgba(0, 217, 255, 0.95);
+      --panel-shadow: rgba(0, 217, 255, 0.46);
+      --muted: rgba(0, 217, 255, 0.72);
+      --good: #89f7ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle, var(--bg1) 58%, var(--bg2));
+      color: var(--cyan);
+      overflow: hidden;
+    }
+
+    .scanline {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0.035) 49%,
+        rgba(255,255,255,0) 100%
+      );
+      background-size: 100% 6px;
+      opacity: 0.12;
+      mix-blend-mode: screen;
+      z-index: 1;
+    }
+
+    .center {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .panel {
+      width: min(820px, 100%);
+      padding: 28px;
+      background: var(--panel);
+      border: 2px solid var(--panel-border);
+      box-shadow: 0 0 32px var(--panel-shadow);
+      border-radius: 18px;
+      backdrop-filter: blur(8px);
+    }
+
+    .panel.compact {
+      width: min(560px, 100%);
+      text-align: center;
+    }
+
+    h1, h2, p {
+      margin-top: 0;
+    }
+
+    h1 {
+      letter-spacing: 1px;
+      text-shadow: 0 0 12px rgba(0, 217, 255, 0.35);
+      margin-bottom: 10px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-top: 10px;
+      background: #000;
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      outline: none;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 11px 18px;
+      background: #000;
+      border: 2px solid var(--cyan);
+      color: var(--cyan);
+      cursor: pointer;
+      border-radius: 10px;
+      transition: 0.2s ease;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 16px rgba(0, 217, 255, 0.55);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    @media (max-width: 760px) {
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      border: 1px solid rgba(0, 217, 255, 0.22);
+      background: rgba(0, 0, 0, 0.46);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border: 1px solid rgba(0, 217, 255, 0.35);
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--good);
+      background: rgba(0, 217, 255, 0.08);
+      margin-bottom: 12px;
+      letter-spacing: 0.4px;
+    }
+
+    .statline {
+      margin: 10px 0;
+      font-size: 18px;
+    }
+
+    .rank {
+      display: inline-block;
+      min-width: 38px;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 0 10px rgba(0, 217, 255, 0.35);
+    }
+
+    #cooldown {
+      margin-top: 12px;
+      font-size: 15px;
+      letter-spacing: 1px;
+      color: rgba(0, 217, 255, 0.92);
+    }
+
+    #expBarContainer {
+      width: 100%;
+      height: 12px;
+      border: 1px solid var(--cyan);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+      background: rgba(0, 217, 255, 0.08);
+    }
+
+    #expBar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00d9ff, #74f2ff);
+      border-radius: 999px;
+      transition: width 0.22s linear;
+    }
+
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .log-box {
+      margin-top: 16px;
+      border: 1px solid rgba(0, 217, 255, 0.18);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.42);
+    }
+
+    .log-title {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .log-item {
+      font-size: 14px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(0, 217, 255, 0.12);
+      color: rgba(0, 217, 255, 0.88);
+    }
+
+    .log-item:last-child {
+      border-bottom: none;
+    }
+
+    .attr-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .attr-pill {
+      border: 1px solid rgba(0, 217, 255, 0.22);
+      background: rgba(0, 217, 255, 0.06);
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: left;
+      min-height: 52px;
+    }
+
+    .attr-pill strong {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      letter-spacing: 0.4px;
+    }
+
+    .perk-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .perk-chip {
+      margin-top: 0;
+      padding: 8px 10px;
+      border: 1px solid rgba(0, 217, 255, 0.25);
+      background: rgba(0, 217, 255, 0.08);
+      border-radius: 999px;
+      font-size: 13px;
+      color: rgba(0, 217, 255, 0.95);
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .perk-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 14px rgba(0, 217, 255, 0.35);
+    }
+
+    .perk-chip.active {
+      background: rgba(0, 217, 255, 0.2);
+      color: white;
+      border-color: rgba(137, 247, 255, 0.9);
+      box-shadow: 0 0 16px rgba(0, 217, 255, 0.5);
+    }
+
+    #message {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: none;
+      padding: 12px 14px;
+      background: #000;
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 18px rgba(0, 217, 255, 0.55);
+      cursor: pointer;
+      border-radius: 12px;
+      z-index: 20;
+      user-select: none;
+      animation: messagePop 1.05s ease-in-out infinite;
+    }
+
+    @keyframes messagePop {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
+    #questScreen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 30;
+      padding: 20px;
+    }
+
+    .quest-list {
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .quest {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 13px 10px;
+      border-bottom: 1px solid rgba(0, 217, 255, 0.18);
+      transition: 0.2s ease;
+    }
+
+    .quest:hover {
+      background: rgba(0, 217, 255, 0.03);
+    }
+
+    .quest-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .quest-text {
+      word-break: break-word;
+      line-height: 1.35;
+    }
+
+    .xp-tag {
+      white-space: nowrap;
+      color: rgba(0, 217, 255, 0.95);
+      font-weight: 700;
+    }
+
+    .category {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-top: 4px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid rgba(0, 217, 255, 0.25);
+      color: rgba(0, 217, 255, 0.85);
+      background: rgba(0, 217, 255, 0.08);
+    }
+
+    .quest.boss {
+      border-left: 3px solid rgba(255, 107, 154, 0.85);
+      background: rgba(255, 107, 154, 0.04);
+    }
+
+    .quest.boss .category {
+      border-color: rgba(255, 107, 154, 0.45);
+      color: #ffc1d2;
+      background: rgba(255, 107, 154, 0.10);
+    }
+
+    .quest.boss .xp-tag {
+      color: #ffc1d2;
+    }
+
+    input[type="checkbox"] {
+      width: 19px;
+      height: 19px;
+      accent-color: var(--cyan);
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .done {
+      opacity: 0.5;
+      text-decoration: line-through;
+    }
+
+    .levelup {
+      animation: levelpop 0.55s ease;
+    }
+
+    @keyframes levelpop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); color: #ffffff; }
+      100% { transform: scale(1); }
+    }
+
+    .pulse {
+      animation: pulse 1.15s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 18px rgba(0, 217, 255, 0.40); }
+      50% { box-shadow: 0 0 28px rgba(0, 217, 255, 0.88); }
+    }
+
+    .split-line {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.35), transparent);
+      margin: 14px 0 0;
+    }
+
+    #levelBanner {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 60;
+      opacity: 0;
+      transform: scale(0.88);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    #levelBanner.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .level-banner-card {
+      min-width: min(420px, calc(100vw - 36px));
+      max-width: 520px;
+      padding: 24px 32px;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.95);
+      border: 2px solid var(--cyan);
+      border-radius: 18px;
+      box-shadow: 0 0 34px rgba(0, 217, 255, 0.7);
+      animation: bannerPop 0.72s ease;
+    }
+
+    @keyframes bannerPop {
+      0% { transform: scale(0.72); filter: blur(2px); }
+      45% { transform: scale(1.08); }
+      100% { transform: scale(1); filter: blur(0); }
+    }
+
+    .level-banner-icon {
+      font-size: 34px;
+      margin-bottom: 8px;
+    }
+
+    .level-banner-title {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 0.7px;
+      color: white;
+      text-shadow: 0 0 12px rgba(0, 217, 255, 0.45);
+    }
+
+    .level-banner-sub {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    #achievementFeed {
+      position: fixed;
+      top: 86px;
+      right: 18px;
+      width: min(300px, calc(100vw - 36px));
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 55;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.95);
+      border: 1px solid rgba(0, 217, 255, 0.78);
+      box-shadow: 0 0 18px rgba(0, 217, 255, 0.45);
+      color: var(--cyan);
+      animation: toastIn 0.22s ease, toastOut 0.22s ease 2.8s forwards;
+    }
+
+    .toast strong {
+      display: block;
+      margin-bottom: 4px;
+      color: white;
+      font-size: 14px;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes toastOut {
+      to { opacity: 0; transform: translateX(24px); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="scanline"></div>
+
+  <div id="levelBanner" aria-hidden="true">
+    <div class="level-banner-card">
+      <div class="level-banner-icon">🏆</div>
+      <div class="level-banner-title" id="levelBannerTitle">Level reached</div>
+      <div class="level-banner-sub" id="levelBannerSub">A new bonus was unlocked</div>
+    </div>
+  </div>
+
+  <div id="achievementFeed"></div>
+
+  <div class="center" id="start">
+    <div class="panel compact">
+      <h1>⚠ SYSTEM BOOT</h1>
+      <input id="name" placeholder="Name" />
+      <button onclick="start()">START</button>
+      <p class="sub">Enter your name to activate the system.</p>
+    </div>
+  </div>
+
+  <div class="center" id="status" style="display:none;">
+    <div class="panel">
+      <h1>🔥 SYSTEM ACTIVE</h1>
+      <p class="sub" id="player"></p>
+
+      <div class="status-grid">
+        <div class="card">
+          <div class="badge">PLAYER STATUS</div>
+          <p class="statline">Level: <span id="level">1</span></p>
+          <p class="statline">EXP: <span id="exp">0</span>/<span id="expMax">100</span></p>
+          <p class="statline">Rank: <span class="rank" id="rank">E</span></p>
+
+          <div class="label-row">
+            <span>Next Level</span>
+            <span id="expPercent">0%</span>
+          </div>
+
+          <div id="expBarContainer">
+            <div id="expBar"></div>
+          </div>
+
+          <div class="split-line"></div>
+
+          <div class="badge" style="margin-top: 14px;">ATTRIBUTES</div>
+          <div id="attributes" class="attr-grid"></div>
+
+          <div class="badge" style="margin-top: 14px;">PERKS</div>
+          <div id="perks" class="perk-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="badge">DAILY CONTROL</div>
+          <p class="statline" id="cooldown">Cooldown: 24:00:00</p>
+          <button id="questBtn" onclick="openQuest()" style="display:none;">🎯 Daily Quest</button>
+          <button onclick="resetSystem()">↻ Reset System</button>
+          <p class="sub">The quest button appears only when the new daily quest is available.</p>
+
+          <div class="split-line"></div>
+
+          <div class="badge" style="margin-top: 14px;">ACTIVE TALENT</div>
+          <p class="statline" id="activeTalentName">None</p>
+          <p class="sub" id="activeTalentDesc">Click a perk to activate it.</p>
+        </div>
+      </div>
+
+      <div class="log-box">
+        <div class="log-title">System Log</div>
+        <div id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="message" onclick="unlock()">
+    ⚠ New daily quest available
+  </div>
+
+  <div id="questScreen">
+    <div class="panel compact">
+      <h2>🎯 DAILY QUEST</h2>
+      <p class="sub">Complete all tasks to receive EXP.</p>
+
+      <div id="quests" class="quest-list"></div>
+
+      <button id="finishBtn" onclick="finish()">Close</button>
+    </div>
+  </div>
+
+  <audio id="sound" src="start.mp3"></audio>
+
+  <script>
+    const STORAGE_KEY = "system_state_v6";
+    const COOLDOWN_SECONDS = 24 * 60 * 60;
+
+    const pool = [
+      { text: "10 Push-ups", category: "Power" },
+      { text: "20 Squats", category: "Legs" },
+      { text: "30 Seconds Plank", category: "Core" },
+      { text: "15 Jumping Jacks", category: "Cardio" },
+      { text: "10 Sit-ups", category: "Core" },
+      { text: "1 Minute Wall Sit", category: "Endurance" }
+    ];
+
+    const bossPool = [
+      { text: "60 Push-ups", category: "Boss" },
+      { text: "100 Squats", category: "Boss" },
+      { text: "2 Minutes Plank", category: "Boss" },
+      { text: "90 Jumping Jacks", category: "Boss" }
+    ];
+
+    const attributeOrder = [
+      { key: "kraft", label: "Power" },
+      { key: "ausdauer", label: "Endurance" },
+      { key: "fokus", label: "Focus" },
+      { key: "reflexe", label: "Reflexes" },
+      { key: "wille", label: "Willpower" }
+    ];
+
+    const perkPool = [
+      "Shadow Focus",
+      "Speed Bonus",
+      "Stamina Boost",
+      "Precision Sight",
+      "Will Core"
+    ];
+
+    const defaultState = () => ({
+      player: "",
+      level: 1,
+      exp: 0,
+      rank: "E",
+      unlocked: false,
+      claimed: false,
+      dailyReady: false,
+      cooldownEnd: null,
+      quests: [],
+      logs: [],
+      attributes: {
+        kraft: 0,
+        ausdauer: 0,
+        fokus: 0,
+        reflexe: 0,
+        wille: 0
+      },
+      perks: [],
+      activeTalent: null,
+      bossQuestEverSpawned: false
+    });
+
+    let state = defaultState();
+
+    let cooldownTimer = null;
+    let expTimer = null;
+    let expQueue = 0;
+    let expBusy = false;
+    let levelBannerTimer = null;
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+
+      try {
+        const parsed = JSON.parse(raw);
+        state = { ...defaultState(), ...parsed };
+
+        if (!Array.isArray(state.quests)) state.quests = [];
+        if (!Array.isArray(state.logs)) state.logs = [];
+        if (!state.attributes) state.attributes = defaultState().attributes;
+        if (!Array.isArray(state.perks)) state.perks = [];
+        if (!state.activeTalent) state.activeTalent = null;
+        if (typeof state.bossQuestEverSpawned !== "boolean") state.bossQuestEverSpawned = false;
+        return !!state.player;
+      } catch {
+        state = defaultState();
+        return false;
+      }
+    }
+
+    function resetSystem() {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+
+    function init() {
+      const hasSave = loadState();
+
+      if (hasSave) {
+        document.getElementById("start").style.display = "none";
+        document.getElementById("status").style.display = "flex";
+        document.getElementById("player").innerText = state.player;
+
+        updateUI();
+        renderAttributes();
+        renderPerks();
+        renderTalentPanel();
+        renderLog();
+        startCooldownTicker();
+        syncDailyState(true);
+      }
+    }
+
+    function start() {
+      const name = document.getElementById("name").value.trim();
+      if (!name) return;
+
+      state = defaultState();
+      state.player = name;
+      state.cooldownEnd = Date.now() + getCooldownSeconds() * 1000;
+      state.logs = ["System boot completed.", "Daily cycle started."];
+
+      playSound();
+
+      document.getElementById("start").style.display = "none";
+      document.getElementById("status").style.display = "flex";
+      document.getElementById("player").innerText = state.player;
+
+      saveState();
+      updateUI();
+      renderAttributes();
+      renderPerks();
+      renderTalentPanel();
+      renderLog();
+      startCooldownTicker();
+    }
+
+    function playSound() {
+      const sound = document.getElementById("sound");
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+    }
+
+    function getRankByLevel(level) {
+      if (level >= 100) return "S";
+      if (level >= 80) return "A";
+      if (level >= 60) return "B";
+      if (level >= 40) return "C";
+      if (level >= 20) return "D";
+      return "E";
+    }
+
+    function getExpMaxForRank(rank) {
+      switch (rank) {
+        case "D": return 200;
+        case "C": return 400;
+        case "B": return 800;
+        case "A": return 1600;
+        case "S": return 3200;
+        default: return 100;
+      }
+    }
+
+    function getCurrentExpMax() {
+      return getExpMaxForRank(getRankByLevel(state.level));
+    }
+
+    function getActiveTalentDescription() {
+      switch (state.activeTalent) {
+        case "Shadow Focus":
+          return "More power: +25% EXP from daily quests.";
+        case "Speed Bonus":
+          return "Faster: EXP animation runs faster and gives +10% bonus.";
+        case "Stamina Boost":
+          return "Your next daily cooldown is reduced by 20%.";
+        case "Precision Sight":
+          return "Boss quest chance increases a lot.";
+        case "Will Core":
+          return "+1 extra attribute on every level-up.";
+        default:
+          return "Click a perk to activate it.";
+      }
+    }
+
+    function getCooldownSeconds() {
+      const base = COOLDOWN_SECONDS;
+      if (state.activeTalent === "Stamina Boost") {
+        return Math.max(3, Math.round(base * 0.8));
+      }
+      return base;
+    }
+
+    function getQuestGainMultiplier() {
+      if (state.activeTalent === "Shadow Focus") return 1.25;
+      if (state.activeTalent === "Speed Bonus") return 1.10;
+      return 1;
+    }
+
+    function getExpTickInterval() {
+      return state.activeTalent === "Speed Bonus" ? 9 : 14;
+    }
+
+    function getBossChanceBonus() {
+      return state.activeTalent === "Precision Sight" ? 0.15 : 0;
+    }
+
+    function getAttributeBonus() {
+      return state.activeTalent === "Will Core" ? 1 : 0;
+    }
+
+    function startCooldownTicker() {
+      if (cooldownTimer) clearInterval(cooldownTimer);
+
+      cooldownTimer = setInterval(() => {
+        syncDailyState(false);
+        updateCooldownText();
+      }, 1000);
+
+      updateCooldownText();
+    }
+
+    function syncDailyState(fromInit) {
+      if (!state.cooldownEnd) return;
+
+      const remaining = Math.max(0, Math.floor((state.cooldownEnd - Date.now()) / 1000));
+
+      if (remaining <= 0 && !state.dailyReady) {
+        state.dailyReady = true;
+        state.unlocked = false;
+        state.claimed = false;
+        state.quests = [];
+
+        state.logs.unshift("New daily quest available.");
+        trimLogs();
+        saveState();
+
+        document.getElementById("message").style.display = "block";
+        document.getElementById("questBtn").style.display = "none";
+
+        if (!fromInit) playSound();
+        renderLog();
+      }
+    }
+
+    function updateCooldownText() {
+      if (!state.cooldownEnd) {
+        document.getElementById("cooldown").innerText = "Cooldown: 24:00:00";
+        return;
+      }
+
+      const remaining = Math.max(0, Math.floor((state.cooldownEnd - Date.now()) / 1000));
+      document.getElementById("cooldown").innerText = `Cooldown: ${formatTime(remaining)}`;
+
+      if (remaining <= 0) {
+        document.getElementById("cooldown").innerText = "Cooldown: 00:00:00";
+      }
+    }
+
+    function unlock() {
+      if (!state.dailyReady || state.unlocked) return;
+
+      state.unlocked = true;
+      state.claimed = false;
+
+      document.getElementById("message").style.display = "none";
+      document.getElementById("questBtn").style.display = "inline-block";
+
+      if (!state.quests.length) {
+        generate();
+      }
+
+      state.logs.unshift("Daily quests opened.");
+      trimLogs();
+      saveState();
+      renderLog();
+    }
+
+    function openQuest() {
+      if (!state.unlocked) return;
+
+      document.getElementById("questScreen").style.display = "flex";
+      state.logs.unshift("Quest screen opened.");
+      trimLogs();
+      saveState();
+      renderLog();
+      renderQuests();
+    }
+
+    function shouldSpawnBossQuest() {
+      if (state.level < 10) return false;
+
+      if (!state.bossQuestEverSpawned) {
+        return true;
+      }
+
+      let chance = 0.2 + getBossChanceBonus();
+      chance = Math.min(0.8, chance);
+      return Math.random() < chance;
+    }
+
+    function createBossQuest() {
+      const item = bossPool[Math.floor(Math.random() * bossPool.length)];
+      return {
+        text: `👑 ${item.text}`,
+        category: "BOSS QUEST",
+        xp: Math.floor(Math.random() * 31) + 40,
+        done: false,
+        boss: true
+      };
+    }
+
+    function generate() {
+      state.quests = [];
+
+      while (state.quests.length < 3) {
+        const item = pool[Math.floor(Math.random() * pool.length)];
+
+        if (!state.quests.find(x => x.text === item.text)) {
+          state.quests.push({
+            text: item.text,
+            category: item.category,
+            xp: Math.floor(Math.random() * 11) + 10,
+            done: false,
+            boss: false
+          });
+        }
+      }
+
+      if (shouldSpawnBossQuest()) {
+        state.quests.push(createBossQuest());
+        state.bossQuestEverSpawned = true;
+
+        state.logs.unshift("Boss quest appeared.");
+        trimLogs();
+        pushToast("👑", "Boss quest appeared!");
+      }
+
+      saveState();
+      renderQuests();
+      renderLog();
+    }
+
+    function renderQuests() {
+      const allDone = state.quests.length > 0 && state.quests.every(q => q.done);
+      let html = "";
+
+      state.quests.forEach((q, i) => {
+        html += `
+          <div class="quest ${q.done ? "done" : ""} ${q.boss ? "boss" : ""}">
+            <div class="quest-left">
+              <input type="checkbox" ${q.done ? "checked" : ""} onchange="toggle(${i})">
+              <div>
+                <div class="quest-text">${q.text}</div>
+                <div class="category">${q.category}</div>
+              </div>
+            </div>
+            <span class="xp-tag">+${q.xp} XP</span>
+          </div>
+        `;
+      });
+
+      document.getElementById("quests").innerHTML = html;
+      document.getElementById("finishBtn").innerText = allDone ? "Complete" : "Close";
+    }
+
+    function toggle(i) {
+      state.quests[i].done = !state.quests[i].done;
+      saveState();
+      renderQuests();
+    }
+
+    function finish() {
+      const allDone = state.quests.length > 0 && state.quests.every(q => q.done);
+
+      if (allDone && !state.claimed) {
+        state.claimed = true;
+
+        const baseGain = state.quests.reduce((sum, q) => sum + q.xp, 0);
+        const gain = Math.max(1, Math.round(baseGain * getQuestGainMultiplier()));
+
+        state.logs.unshift(`Quest completed. +${gain} XP received.`);
+        trimLogs();
+
+        addEXP(gain);
+        startNewDailyCycle();
+
+        document.getElementById("questBtn").style.display = "none";
+        document.getElementById("message").style.display = "none";
+      }
+
+      document.getElementById("questScreen").style.display = "none";
+      saveState();
+      renderLog();
+    }
+
+    function startNewDailyCycle() {
+      state.unlocked = false;
+      state.dailyReady = false;
+      state.quests = [];
+      state.cooldownEnd = Date.now() + getCooldownSeconds() * 1000;
+      saveState();
+      updateCooldownText();
+    }
+
+    function addEXP(amount) {
+      expQueue += amount;
+      processExpQueue();
+    }
+
+    function processExpQueue() {
+      if (expBusy) return;
+      if (expQueue <= 0) return;
+
+      expBusy = true;
+
+      if (expTimer) clearInterval(expTimer);
+
+      expTimer = setInterval(() => {
+        if (expQueue <= 0) {
+          clearInterval(expTimer);
+          expTimer = null;
+          expBusy = false;
+          saveState();
+          renderLog();
+          return;
+        }
+
+        expQueue--;
+
+        state.exp++;
+        const expMax = getCurrentExpMax();
+
+        if (state.exp >= expMax) {
+          state.exp -= expMax;
+          state.level++;
+          onLevelUp(state.level);
+        }
+
+        updateUI();
+      }, getExpTickInterval());
+    }
+
+    function onLevelUp(newLevel) {
+      const oldRank = getRankByLevel(newLevel - 1);
+      const newRank = getRankByLevel(newLevel);
+      const rankChanged = oldRank !== newRank;
+
+      const stat = attributeOrder[(newLevel - 2) % attributeOrder.length];
+      const extraAttr = getAttributeBonus();
+      state.attributes[stat.key] += 1 + extraAttr;
+
+      const levelText = `Level ${newLevel} reached`;
+      const bonusText = `${stat.label} +${1 + extraAttr}`;
+
+      state.logs.unshift(`${levelText}. ${bonusText}.`);
+      trimLogs();
+
+      renderAttributes();
+      renderPerks();
+      renderTalentPanel();
+
+      showLevelBanner(levelText, rankChanged ? `Rank ${newRank} reached • ${bonusText}` : bonusText);
+      pushToast("🏆", levelText);
+      pushToast("⚡", bonusText);
+
+      if (rankChanged) {
+        pushToast("🏅", `Rank ${newRank} reached`);
+        state.logs.unshift(`Rank ${newRank} reached.`);
+        trimLogs();
+      }
+
+      if (newLevel % 5 === 0) {
+        const perkIndex = Math.floor((newLevel / 5 - 1) % perkPool.length);
+        const perk = perkPool[perkIndex];
+
+        if (!state.perks.includes(perk)) {
+          state.perks.push(perk);
+          pushToast("🏆", `Perk unlocked: ${perk}`);
+          state.logs.unshift(`Perk unlocked: ${perk}.`);
+          trimLogs();
+        }
+      }
+
+      playSound();
+      saveState();
+      renderLog();
+    }
+
+    function selectTalent(perk) {
+      if (state.activeTalent === perk) {
+        state.activeTalent = null;
+        state.logs.unshift(`Talent disabled: ${perk}.`);
+        pushToast("🏆", `${perk} disabled`);
+      } else {
+        state.activeTalent = perk;
+        state.logs.unshift(`Talent activated: ${perk}.`);
+        pushToast("🏆", `${perk} activated`);
+      }
+
+      trimLogs();
+      saveState();
+      renderTalentPanel();
+      renderPerks();
+      renderLog();
+    }
+
+    function renderPerks() {
+      const el = document.getElementById("perks");
+
+      if (!state.perks.length) {
+        el.innerHTML = `<span class="sub" style="margin:0;">No perks unlocked yet.</span>`;
+        return;
+      }
+
+      el.innerHTML = state.perks
+        .map(perk => {
+          const active = state.activeTalent === perk;
+          return `
+            <button
+              type="button"
+              class="perk-chip ${active ? "active" : ""}"
+              onclick="selectTalent(${JSON.stringify(perk)})"
+              title="${getTalentTooltip(perk)}"
+            >
+              ${active ? "● " : "◌ "} ${perk}
+            </button>
+          `;
+        })
+        .join("");
+    }
+
+    function renderTalentPanel() {
+      const nameEl = document.getElementById("activeTalentName");
+      const descEl = document.getElementById("activeTalentDesc");
+
+      if (!state.activeTalent) {
+        nameEl.innerText = "None";
+        descEl.innerText = "Click a perk to activate it.";
+        return;
+      }
+
+      nameEl.innerText = state.activeTalent;
+      descEl.innerText = getActiveTalentDescription();
+    }
+
+    function getTalentTooltip(perk) {
+      switch (perk) {
+        case "Shadow Focus":
+          return "25% more EXP from quests";
+        case "Speed Bonus":
+          return "Faster EXP animation";
+        case "Stamina Boost":
+          return "20% shorter cooldown";
+        case "Precision Sight":
+          return "Higher boss quest chance";
+        case "Will Core":
+          return "+1 attribute per level";
+        default:
+          return "";
+      }
+    }
+
+    function showLevelBanner(title, sub) {
+      const banner = document.getElementById("levelBanner");
+      const bannerTitle = document.getElementById("levelBannerTitle");
+      const bannerSub = document.getElementById("levelBannerSub");
+
+      if (levelBannerTimer) clearTimeout(levelBannerTimer);
+
+      bannerTitle.innerText = title;
+      bannerSub.innerText = sub;
+      banner.classList.add("show");
+      banner.setAttribute("aria-hidden", "false");
+
+      levelBannerTimer = setTimeout(() => {
+        banner.classList.remove("show");
+        banner.setAttribute("aria-hidden", "true");
+      }, 1450);
+    }
+
+    function pushToast(icon, text) {
+      const feed = document.getElementById("achievementFeed");
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.innerHTML = `<strong>${icon} Trophy</strong>${text}`;
+
+      feed.prepend(toast);
+
+      while (feed.children.length > 4) {
+        feed.removeChild(feed.lastElementChild);
+      }
+
+      setTimeout(() => {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 3200);
+    }
+
+    function updateUI() {
+      state.rank = getRankByLevel(state.level);
+      const expMax = getCurrentExpMax();
+
+      document.getElementById("level").innerText = state.level;
+      document.getElementById("exp").innerText = state.exp;
+      document.getElementById("expMax").innerText = expMax;
+      document.getElementById("rank").innerText = state.rank;
+
+      const percent = Math.max(0, Math.min(100, (state.exp / expMax) * 100));
+      document.getElementById("expBar").style.width = percent + "%";
+      document.getElementById("expPercent").innerText = `${Math.floor(percent)}%`;
+
+      saveState();
+    }
+
+    function renderAttributes() {
+      const el = document.getElementById("attributes");
+      el.innerHTML = attributeOrder.map(({ key, label }) => {
+        const value = state.attributes?.[key] ?? 0;
+        return `
+          <div class="attr-pill">
+            <strong>${label}</strong>
+            <div>${value}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderLog() {
+      const logEl = document.getElementById("log");
+      logEl.innerHTML = state.logs
+        .slice(0, 5)
+        .map(item => `<div class="log-item">${item}</div>`)
+        .join("");
+    }
+
+    function trimLogs() {
+      state.logs = state.logs.slice(0, 5);
+    }
+
+    function formatTime(totalSeconds) {
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function pad(n) {
+      return n < 10 ? "0" + n : String(n);
+    }
+
+    window.addEventListener("load", init);
+  </script>
+</body>
+</html>
